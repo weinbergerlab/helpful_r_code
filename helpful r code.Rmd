@@ -218,8 +218,14 @@ mod3<- lapply(ec2.split,  reg.func2, outcome="J12_J18_prim", covars=c("acm_noj_p
 mod.list2<-list(mod1, mod2, mod3)
 ```
 
+Pulling otu the summary statistics gets a bit trickier here. We have to use nested sapply statements to pull everything out by age group and then by model.
 ```{r}
-
+mod.nobs<-sapply(mod.list2, function(x) sapply(x, '[[' , 'mod.nobs'))
+mod.nobs
+```
+```{r}
+mod.aic<-sapply(mod.list2, function(x) sapply(x, '[[' , 'aic.mod'))
+mod.aic
 ```
 
 
