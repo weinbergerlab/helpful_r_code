@@ -5,7 +5,7 @@ output: html_notebook
 
 Code that we often use.
 
-
+Make sure the packages in the following chunk are all installed (use install.packages())
 ```{r setup}
 library(rgdal) #for importing shape files
 #library(readr)
@@ -20,6 +20,9 @@ library(htmltools)
 library(lubridate) #helpful packages for dealing with dates
 
 library(reshape2) #super helpful for data wrangling
+
+library(mgcv) #smoothing splines
+library(tidymv) #plot output from smoothing splines
 ```
 
 #Import data from Github
@@ -336,10 +339,23 @@ htmlTable(tab1, align='l',caption="Table 1. Summary of AIC scores")
 
 ## GAM smooths
 Generalized Additive Models can be used to flexibly capture the associations between 2 variables
+First prepare some pretend data
 ```{r}
-mod4<-gam(pos~ s(agem,by=Ethnicity), data=s1, family='binomial')
-plot(mod4, bty='l', main='Carriage prevalence', pages=1, ylab='Age effect')
-plot1<-plot_smooths(model=mod4, series=agem, transform = ilogit , Ethnicity)
+t<-1:120
+x1<- round(exp(sin(2*pi*t/120)+3))
+x2<- round(exp(cos(2*pi*t/120) +5))
+mat1<-cbind(x1,t,1)
+mat2<-cbind(x2,t,2)
+mat.comb<-rbind(mat1, mat2)
+mat.comb<-as.data.frame(mat.comb)
+mat.comb$grp<-as.factor(mat.comb$grp) #MUST define the group variable as a factor
+names(mat.comb)<-c('y','t2','grp')
+```
+
+Then fit the model and view the smoothed fit
+```{r}
+mod1<-mgcv::gam(y~ s(t2,by=grp), data=mat.comb, family='poisson')
+plot1<-plot_smooths(model=mod1, series=t2,  grp)
 plot1+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))
 ```
