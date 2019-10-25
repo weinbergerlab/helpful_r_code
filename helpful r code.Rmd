@@ -342,14 +342,14 @@ Generalized Additive Models can be used to flexibly capture the associations bet
 First prepare some pretend data
 ```{r}
 t<-1:120
-x1<- round(exp(sin(2*pi*t/120)+3))
+x1<- round(exp(sin(2*pi*t/120)+5))
 x2<- round(exp(cos(2*pi*t/120) +5))
 mat1<-cbind(x1,t,1)
 mat2<-cbind(x2,t,2)
 mat.comb<-rbind(mat1, mat2)
 mat.comb<-as.data.frame(mat.comb)
-mat.comb$grp<-as.factor(mat.comb$grp) #MUST define the group variable as a factor
 names(mat.comb)<-c('y','t2','grp')
+mat.comb$grp<-as.factor(mat.comb$grp) #MUST define the group variable as a factor
 ```
 
 Then fit the model and view the smoothed fit
