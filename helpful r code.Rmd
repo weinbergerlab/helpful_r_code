@@ -16,6 +16,10 @@ library(RColorBrewer) #Pick a nice color palette
 
 library(htmlTable) #make nice publication-quality tables
 library(htmltools)
+
+library(lubridate) #helpful packages for dealing with dates
+
+library(reshape2) #super helpful for data wrangling
 ```
 
 #Import data from Github
@@ -58,9 +62,94 @@ unique(paho.ds$age_group)
 ```
 
 ### Reshaping data using melt/cast
+Let's read in some data from a Chile hospitalization dataset. This has been restricted to just people with a respiratory complaint
 ```{r}
+ d1<-readRDS('chile_j_chapter.rds')
+d1$date<- as.Date(d1$date, "%d%b%Y") #format the date variable
 
 ```
+
+Then create a new variablecalled 'week.date' that has the date of the Sunday of the week in which the admission occurred. The lubridate has some functions that make this easier. You want to round the date down to the nearest Sunday. The floor_data function can accomplish this: https://rawgit.com/rstudio/cheatsheets/master/lubridate.pdf
+```{r date_format2}
+#"round" the date down to 
+d1$week.date<-floor_date(d1$date, unit='week')
+head(d1)
+```
+
+Then do some basic explorations. What is the distibution of ages? of Dates? (make a histogram for each)
+```{r hist1}
+hist(d1$EDAD, xlab='Age (years)' )
+hist(d1$date, breaks=10)
+```
+
+frequency of codes
+```{r freq.codes, echo=FALSE}
+sort(table(d1$diag1),decreasing=T)
+```
+
+define otucome variable based on ICD codes
+```{r}
+icd10.3digits<-substr(d1$diag1,1,3) #extract 1st 3 digits from IC10 code
+#icd10.3digits[1:10] #view first 10
+
+#Initialize variables
+d1$j09_j18<-rep(0, nrow(d1))
+#ou could either list out J09, J10, J11... or use this >= or <=--just be careful with it and check your work
+d1$j09_j18[icd10.3digits >= c('J09') & icd10.3digits <= c('J18')  ]<-1
+
+d1$j22<-0
+d1$j22[icd10.3digits >= c('J22')  ]<-1
+
+table(d1$j09_j18, d1$diag1) #Ceeck your work
+
+```
+
+Create age groups
+```{r agegrp.set}
+d1$agegrp <-NA #Initialize variable
+d1$agegrp[d1$EDAD>=0 &d1$EDAD<5] <-1
+d1$agegrp[d1$EDAD>=5 &d1$EDAD<18] <-2
+d1$agegrp[d1$EDAD>=18 &d1$EDAD<40] <-3
+d1$agegrp[d1$EDAD>=40 &d1$EDAD<65] <-4
+d1$agegrp[d1$EDAD>=65 &d1$EDAD<115] <-5
+agelabs<-c('<5y','5-17y','18-39y', '40-64y', '65+y') #create labels for the age groups
+```
+
+Let's aggregate now by week.date AND age group. The melt and dcast function will be used to reshapre the date so that we have 1 row per date and 1 column per age group
+
+```{r}
+d2<-d1[,c('agegrp','week.date','j09_j18')] #Just keep the relevant variables
+d2.m<-melt(d2, id.vars=c('week.date','agegrp') )
+d2.c<-dcast(d2.m, week.date~agegrp, fun.aggregate  =sum)
+names(d2.c)<-c('date','ag1','ag2','ag3','ag4','ag5')
+```
+
+alternatively, we could create a 'long' dataset by modifying the dcast function. we have 1 row for each date/age group combination.
+```{r}
+d2.c.long<-dcast(d2.m, week.date+agegrp~., fun.aggregate  =sum)
+names(d2.c.long)<-c('week.date', 'age.grp', 'count')
+```
+
+Or if we wanted, we could have a 3rd variable that we are aggregatin on (e.g., state or municipality), and we would use acast to get a #D array rather than a matrix or data frame. Or we could do it based on another outcome variable. Here dimension 1 is date, dimension 2 is age group and dimension 3 is outcome variable (J09-J18 or J22)
+```{r}
+d2<-d1[,c('agegrp','week.date','j09_j18','j22')] #Just keep the relevant variables
+d2.m<-melt(d2, id.vars=c('week.date','agegrp') )
+d2.c<-acast(d2.m, week.date~agegrp~variable, fun.aggregate  =sum)
+str(d2.c) #see the structure of the array
+```
+
+Take a 'slice' of the array to just look at j12 or just J22. This gives us 2 arrays, each with number of rows equal to the number of dates, n columns equal to the number of columns, and the value equal to the number of cases in each time period.
+
+```{r}
+j09.18.ds<-d2.c[,,'j09_j18']
+j22.ds<-d2.c[,,'j09_j18']
+
+
+str(j22.ds)
+str(j09.18.ds)
+```
+
+
 
 
 ## Basic plotting
