@@ -5,7 +5,12 @@ output: html_notebook
 
 Code that we often use.
 
-Make sure the packages in the following chunk are all installed (use install.packages())
+
+#How to use this file
+1) Get the github repository. You can do this in RStudio (if you have git installed) by going to File/NewProject/bersion control/git/ then paste the URL https://github.com/weinbergerlab/helpful_r_code and decide where you want to save it on your computer. This should download all of the file you need with the correct directory structure, and then just open this .Rmd file and run through it. Or you can visit https://github.com/weinbergerlab/helpful_r_code and download the ZIP file, unzip to your computer and then open the .Rmd file and run through it
+
+2) Make sure the packages in the following chunk are all installed (use install.packages())
+
 ```{r setup}
 library(rgdal) #for importing shape files
 #library(readr)
