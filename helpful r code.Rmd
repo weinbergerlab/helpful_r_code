@@ -13,6 +13,9 @@ library(ggplot2) #Plotting
 library(RCurl) #to read files from github
 
 library(RColorBrewer) #Pick a nice color palette
+
+library(htmlTable) #make nice publication-quality tables
+library(htmltools)
 ```
 
 #Import data from Github
@@ -218,17 +221,28 @@ mod3<- lapply(ec2.split,  reg.func2, outcome="J12_J18_prim", covars=c("acm_noj_p
 mod.list2<-list(mod1, mod2, mod3)
 ```
 
-Pulling otu the summary statistics gets a bit trickier here. We have to use nested sapply statements to pull everything out by age group and then by model.
+Pulling out the summary statistics gets a bit trickier here. We have to use nested sapply statements to pull everything out by age group and then by model.
 ```{r}
-mod.nobs<-sapply(mod.list2, function(x) sapply(x, '[[' , 'mod.nobs'))
-mod.nobs
+mod.nobs.complex<-sapply(mod.list2, function(x) sapply(x, '[[' , 'mod.nobs'))
+mod.nobs.complex
 ```
 ```{r}
-mod.aic<-sapply(mod.list2, function(x) sapply(x, '[[' , 'aic.mod'))
-mod.aic
+mod.aic.complex<-sapply(mod.list2, function(x) sapply(x, '[[' , 'aic.mod'))
+mod.aic.complex
 ```
 
 
+## Making nice summary tables for publications
+Instead of taking the data and putting it into a table in a Word document, you cna make a beautifl html tabl directly in R. Let's take the AIC summary table from above (mod.aic.complex) and turn it into a nice table. You the htmlTable package to do this. Copy and paste the table into Word (make sure you copy the WHOLE table, otherwise weird things will happen); make sure to keep source formatting when yoy paste into Word.
+You would probably want to fix the row names as well. More details are here https://cran.r-project.org/web/packages/htmlTable/vignettes/tables.html
+```{r}
+tab1<- round(mod.aic.complex) #round AIC scores to nearest whole number
+tab1<-as.data.frame(tab1) #convert to data frame
+names(tab1)<-c('Model 1', 'Model 2','Model 3') #Label columns
+htmlTable(tab1, align='l',caption="Table 1. Summary of AIC scores")
+#print(table.div,type="html",useViewer=TRUE)
+#save_html(table.div, 'table1.html')
+```
 
 
 ## GAM smooths
