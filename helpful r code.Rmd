@@ -4,6 +4,8 @@ output: html_notebook
 ---
 
 Code that we often use.
+
+
 ```{r setup}
 library(rgdal) #for importing shape files
 #library(readr)
@@ -170,13 +172,16 @@ mod.coef #show for first 3 groups
 
 ##Flexible models
 Sometimes we want to be able to run slightly different models on the same dataset. We can again use a function. Here we provide the name of the covariates as a character vector, we provide the name of the outcome variable, and the name of the dataset
-
+Within the function, we will extract the AIC and model coefficients
 ```{r}
 reg.func2<-function(ds, outcome, covars){
   covars.combined<- paste(covars, collapse='+')
   form1<-as.formula(paste0(outcome, '~', covars.combined  ))
   mod<-glm(form1, family='poisson', data=ds)
-  return(mod)
+  mod.coefs<-coef(mod)
+  aic.mod<- AIC(mod)
+  mod.nobs=nobs(mod)
+  return(list('mod.coefs'=mod.coefs,'aic.mod'=aic.mod,'mod.nobs'=mod.nobs))
 }
 ```
 Then we call the function, using 3 different sets of covariates, with results saved as mod1, mod2, mod3
@@ -185,21 +190,38 @@ mod1<- reg.func2(ds=ec2.split[[1]], outcome="J12_J18_prim", covars=c("acm_noj_pr
 mod2<- reg.func2(ds=ec2.split[[1]], outcome="J12_J18_prim", covars=c("A00_B99_prim"))
 mod3<- reg.func2(ds=ec2.split[[1]], outcome="J12_J18_prim", covars=c("acm_noj_prim","A00_B99_prim"))
 ```
+We could look at the output model by model:
+```{r}
+mod1
+```
 
-We could combine these results into a list, and then use the functions from above
+We could combine these results into a list, and then we can pull out the coefficients into a summary table. We pull out elements of list named 'mod.coefs' by using the '[[' operator with sapply
 ```{r}
 mod.list<-list(mod1, mod2, mod3)
-mod.coef<-lapply(mod.list, function(x) coef(x))
+mod.coef<-sapply(mod.list, '[[' , 'mod.coefs' , simplify=F)
 mod.coef 
 ```
 And we want to compare these models, so extract AIC scores from each. When comparing AIC scores, it is a good idea to confirm that all of the models use the same observations. A quick check of this can be accomplished by looking at the number of observations used in model fitting
 ```{r}
-mod.aic<-sapply(mod.list, function(x) AIC(x))
+mod.aic<-sapply(mod.list, '[[' , 'aic.mod' )
 mod.aic 
 
-mod.nobs<-sapply(mod.list, function(x) nobs(x))
+mod.nobs<-sapply(mod.list, '[[' , 'mod.nobs' )
 mod.nobs
 ```
+
+And to get really fancy, let's apply our function for different variables across different age groups. As above, we can do that with lapply. And we will create a 'list of lists'. The first level of the lists will be by model, the second level will be by age group.
+```{r}
+mod1<- lapply(ec2.split,  reg.func2, outcome="J12_J18_prim", covars=c("acm_noj_prim"))
+mod2<- lapply(ec2.split,  reg.func2, outcome="J12_J18_prim", covars=c("A00_B99_prim"))
+mod3<- lapply(ec2.split,  reg.func2, outcome="J12_J18_prim", covars=c("acm_noj_prim",'A00_B99_prim'))
+mod.list2<-list(mod1, mod2, mod3)
+```
+
+```{r}
+
+```
+
 
 
 
