@@ -20,16 +20,16 @@ paho.url<-getURL("https://raw.githubusercontent.com/weinbergerlab/paho-pneumonia
 paho.ds<-read.csv(text=paho.url)
 ```
 
-#Some basic data management
+##Some basic data management
 Things you could do in Excel, but shouldn't...
 
-##Fix Date formatting
+### Fix Date formatting
 Need to declare date variable as a date using as.Date. Use a capital Y for 4 digit year, m for month, d for day. Can rearrange that part of the function to match what is in yur data. A 2 digit year uses a lower case y. If the month is written out with 3 letter abbreviation, use b instead of m
 ```{r}
 paho.ds$monthdate<-as.Date(paho.ds$monthdate, format='%Y-%m-%d') 
 ```
 
-##Subset data
+### Subset data
 Just pull out ecuador 12-23m all HDI groups
 ```{r}
 ec1<- paho.ds[paho.ds$age_group=='ec 12-23m A',]
@@ -42,7 +42,7 @@ obs.select[1:100] #just loo at first 100 indices
 ```
 Now use these indices to subset the dataset. Only take rows identified by 'obs.select'. When we run unique() it will tell us which age groups are in the dataset. As we can see, we now only have age groups that have 'ec' in the name. We have dropped all of the other rows that do not have 'ec' in the name
 ```{r}
-ec2<-paho.ds[obs.select,]
+ec2<-paho.ds[obs.select, 1:10] #also only keep variables 1:10
 #ec2<-paho.ds[grep('ec',paho.ds$age_group),] #or can do ti all in 1 step
 print('subset')
 unique(ec2$age_group)
@@ -52,12 +52,62 @@ unique(paho.ds$age_group)
 
 ```
 
+### Reshaping data using melt/cast
+```{r}
+
+```
 
 
+## Basic plotting
+I like to use the base plot functions. Some people prefer ggplot2
+```{r}
+x<-rnorm(n=100)
+y<- 0.1 + 1.5*x +rnorm(n=100)
 
-#Choropleth maps
-In this example, we will try to make a choropleth map using 2-digit ZIP area in Germany
-(Annie also recommends this tutorial if you want more depth:https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
+plot(x,y,
+     bty='l', #turn off top and side axis
+     pch=16, #controls shape of the markers
+     col='red', #color of the markers
+     ylab='Y Variable',
+     xlab='X Variable',
+     xpd=NA #allows points to go off side of plotting area
+     )
+```
+
+
+### Nice colors with colorbrewer
+ColorBrewer has a bunch of palettes that look nice. More info:
+```{r}
+?RColorBrewer 
+```
+
+See the available palettes
+```{r}
+display.brewer.all()
+
+```
+Let's say we want a sequential palette. Our dataset has 100 observations, but the palletes only go up to 11 colors. So we need to extend the palette. We will use the 'Spectral' palette, which normally has 11 colors and will use the coloRampPalette function to expand this to 100 colors
+```{r}
+n.cols=100
+nice.cols <-  colorRampPalette(brewer.pal(11, "Spectral"))(n.cols)
+```
+Let's then use these colors in the XY plot from above. Need to srt the data by the variable you want it colored by
+```{r}
+ds<-cbind.data.frame(x,y) #combine x and y into a dataframe
+ds<-ds[order(ds$y),] #sort the data frame by y
+plot(ds$x,ds$y,
+     bty='l', #turn off top and side axis
+     pch=16, #controls shape of the markers
+     col=nice.cols, #color of the markers
+     ylab='Y Variable',
+     xlab='X Variable',
+     xpd=NA #allows points to go off side of plotting area
+     )
+```
+
+
+## Choropleth maps
+These are maps that have areas (ZIP/county/state, etc) that are colored in based on some characteristics. In this example, we will try to make a choropleth map using 2-digit ZIP area in Germany (Annie also recommends this tutorial if you want more depth:https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
 )
 ```{r}
 #Import the shape file
@@ -81,7 +131,79 @@ ggplot() + geom_map(data = ds1, #use dataset ds1
 
 ```
 
-#GAM smooths
+## GLM over multiple groups
+We often want to run some function, like a regression model over multiple groups. An easy way to do this is to split the dataset into smaller datasets, which are stored in a list, and then run the analysis on each element of the list using lapply. Let's use dataset ec2, which has data for ecuador by age group
+-First split the data by age group
+```{r}
+ec2$age_group<-factor(ec2$age_group) #ensure ec2$agegroup is a factor that only has levels present in the data
+ec2.split<-split(ec2, ec2$age_group)
+str(ec2.split[1:2])
+```
+Now let's write a simple function that we can use to run the regression
+```{r}
+reg.func<-function(ds){
+  mod<-glm(J12_J18_prim ~acm_noj_prim +A00_B99_prim, family='poisson', data=ds)
+  return(mod)
+}
+```
+
+Now run the reg.func function for each age group. It returns the stored model object
+```{r}
+ mod1<-lapply(ec2.split,reg.func)
+```
+
+We would like to extract useful infor from the model. We can do this in a second lapply. Let's first look at the model summary for each group 
+```{r}
+mod.summary<-lapply(mod1, function(x) summary(x))
+mod.summary[1:3] #show for first 3 groups
+```
+Next let's extract the coefficients
+```{r}
+mod.coef<-lapply(mod1, function(x) coef(x))
+mod.coef #show for first 3 groups
+```
+we could instead combine these into a single array by using sapply instead of lapply
+```{r}
+mod.coef<-t(sapply(mod1, function(x) coef(x)))
+mod.coef #show for first 3 groups
+```
+
+##Flexible models
+Sometimes we want to be able to run slightly different models on the same dataset. We can again use a function. Here we provide the name of the covariates as a character vector, we provide the name of the outcome variable, and the name of the dataset
+
+```{r}
+reg.func2<-function(ds, outcome, covars){
+  covars.combined<- paste(covars, collapse='+')
+  form1<-as.formula(paste0(outcome, '~', covars.combined  ))
+  mod<-glm(form1, family='poisson', data=ds)
+  return(mod)
+}
+```
+Then we call the function, using 3 different sets of covariates, with results saved as mod1, mod2, mod3
+```{r}
+mod1<- reg.func2(ds=ec2.split[[1]], outcome="J12_J18_prim", covars=c("acm_noj_prim"))
+mod2<- reg.func2(ds=ec2.split[[1]], outcome="J12_J18_prim", covars=c("A00_B99_prim"))
+mod3<- reg.func2(ds=ec2.split[[1]], outcome="J12_J18_prim", covars=c("acm_noj_prim","A00_B99_prim"))
+```
+
+We could combine these results into a list, and then use the functions from above
+```{r}
+mod.list<-list(mod1, mod2, mod3)
+mod.coef<-lapply(mod.list, function(x) coef(x))
+mod.coef 
+```
+And we want to compare these models, so extract AIC scores from each. When comparing AIC scores, it is a good idea to confirm that all of the models use the same observations. A quick check of this can be accomplished by looking at the number of observations used in model fitting
+```{r}
+mod.aic<-sapply(mod.list, function(x) AIC(x))
+mod.aic 
+
+mod.nobs<-sapply(mod.list, function(x) nobs(x))
+mod.nobs
+```
+
+
+
+## GAM smooths
 Generalized Additive Models can be used to flexibly capture the associations between 2 variables
 ```{r}
 mod4<-gam(pos~ s(agem,by=Ethnicity), data=s1, family='binomial')
