@@ -1,0 +1,95 @@
+---
+title: "Helpful R code"
+output: html_notebook
+---
+
+Code that we often use.
+```{r setup}
+library(rgdal) #for importing shape files
+#library(readr)
+library(ggplot2) #Plotting
+library(RCurl) #to read files from github
+
+library(RColorBrewer) #Pick a nice color palette
+```
+
+#Import data from Github
+Go to Github, click on the 'raw' option to get to unformatted data, copy and paste the URL into the code below
+```{r}
+paho.url<-getURL("https://raw.githubusercontent.com/weinbergerlab/paho-pneumonia-mortality/master/Data/PAHO%20all%20age%20cuts_SubChapters.csv")
+paho.ds<-read.csv(text=paho.url)
+```
+
+#Some basic data management
+Things you could do in Excel, but shouldn't...
+
+##Fix Date formatting
+Need to declare date variable as a date using as.Date. Use a capital Y for 4 digit year, m for month, d for day. Can rearrange that part of the function to match what is in yur data. A 2 digit year uses a lower case y. If the month is written out with 3 letter abbreviation, use b instead of m
+```{r}
+paho.ds$monthdate<-as.Date(paho.ds$monthdate, format='%Y-%m-%d') 
+```
+
+##Subset data
+Just pull out ecuador 12-23m all HDI groups
+```{r}
+ec1<- paho.ds[paho.ds$age_group=='ec 12-23m A',]
+```
+
+You might want to pull ut any grouping that have 'ec' in the name. To do this, se the grep function. We will search for the string'ec' in the age_group variable. This will return the row numbers for where 'ec' is found 
+```{r}
+obs.select<- grep('ec',paho.ds$age_group)
+obs.select[1:100] #just loo at first 100 indices
+```
+Now use these indices to subset the dataset. Only take rows identified by 'obs.select'. When we run unique() it will tell us which age groups are in the dataset. As we can see, we now only have age groups that have 'ec' in the name. We have dropped all of the other rows that do not have 'ec' in the name
+```{r}
+ec2<-paho.ds[obs.select,]
+#ec2<-paho.ds[grep('ec',paho.ds$age_group),] #or can do ti all in 1 step
+print('subset')
+unique(ec2$age_group)
+
+print("Original")
+unique(paho.ds$age_group)
+
+```
+
+
+
+
+#Choropleth maps
+In this example, we will try to make a choropleth map using 2-digit ZIP area in Germany
+(Annie also recommends this tutorial if you want more depth:https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
+)
+```{r}
+#Import the shape file
+german.shp2<-readOGR('./german_shp_files/plz-2stellig.shp')
+german.shp2$plz<-as.character(german.shp2$plz)
+german.shp.df<- fortify(german.shp2, region = "plz") #converts shape file into a data frame
+
+#You have some data with an attribute (e.g., a rate ratio) for each spatial unit
+#store this as a data frame, with 1 column having the spatial identifier ('plz' in this example and the other having the value for that spatial unit)
+ds1 <-cbind.data.frame('plz'=german.shp2$plz, 'Var1'=rnorm(n=length(german.shp2$plz) ))
+
+#Now make your map
+ggplot() + geom_map(data = ds1, #use dataset ds1
+                    aes(map_id = plz, #the variable 'plz' link the map file and data file
+                        fill = ds1$Var1 #use variable Var1 to color the areas
+                        ),
+    map = german.shp.df )+ 
+  #the rest of this code just controls the axis limits and how the background looks
+    expand_limits(x = german.shp.df$long, y = german.shp.df$lat) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+```
+
+#GAM smooths
+Generalized Additive Models can be used to flexibly capture the associations between 2 variables
+```{r}
+mod4<-gam(pos~ s(agem,by=Ethnicity), data=s1, family='binomial')
+plot(mod4, bty='l', main='Carriage prevalence', pages=1, ylab='Age effect')
+plot1<-plot_smooths(model=mod4, series=agem, transform = ilogit , Ethnicity)
+plot1+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+
+
