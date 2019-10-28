@@ -360,10 +360,12 @@ mat.comb$grp<-as.factor(mat.comb$grp) #MUST define the group variable as a facto
 Then fit the model and view the smoothed fit
 ```{r}
 mod1<-mgcv::gam(y~ s(t2,by=grp), data=mat.comb, family='poisson')
-plot1<-plot_smooths(model=mod1, series=t2,  grp)
+plot1<-plot_smooths(model=mod1, series=t2,  grp, transform=exp)
 plot1+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
 panel.background = element_blank(), axis.line = element_line(colour = "black"))
 ```
+Note with smooth_plot: In this example, we exponentiate the results in plot_smooth (transform=exp) to get back to the original scale. With a logistic regression, you will need to supply smooth_plot with a function that calculates an inverse-logit function: ilogit<-function(x){ exp(x)/(1+exp(x))}
+
 
 
 
