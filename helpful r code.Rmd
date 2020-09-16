@@ -207,6 +207,17 @@ plot(ds$x,ds$y,
      )
 ```
 
+## heatmaps
+heatmap(comb.mat, Rowv=NA, Colv=NA, scale='none', 
+        labRow = c('Importance for transmission','Vaccine-derived Protection (carriage)','IPD incidence','Vaccine-derived Protection (IPD)'),
+        labCol=date.labs ,
+        col=nice.cols, cexRow=0.75,
+        margins=c(3,5),
+        xlab='Age(months)',
+        # IMPORTANT BIT HERE
+        add.expr = abline(v=c(12,24,36,48), col=rgb(1,1,1,alpha=0.2), lty=3),
+         axis(side=1, at=c(0,12,24,36,48,60), labels=c(NA, 12,24,36,48,NA))
+)
 
 ## Choropleth maps
 These are maps that have areas (ZIP/county/state, etc) that are colored in based on some characteristics. In this example, we will try to make a choropleth map using 2-digit ZIP area in Germany (Annie also recommends this tutorial if you want more depth:https://cran.r-project.org/doc/contrib/intro-spatial-rl.pdf
