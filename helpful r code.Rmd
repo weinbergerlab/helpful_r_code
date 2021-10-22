@@ -179,17 +179,24 @@ plot(x,y,
      )
 ```
 
-Here is a ggplot. The commented code allows facet wrapping for multiple groups
+Here is a ggplot with multiple panels. 
 ```{r
- p1 <- ggplot(d3, aes_string(x=time.var, y=yvar)) +
+ts.plot.fun <- function(time.var=date, yvar,multiple_group=F, group.var ){
+  p1 <- ggplot(d3, aes_string(x=time.var, y=yvar)) +
       geom_line() +
       ylab("Number of pneumonia deaths") +
       xlab("Date") +
       theme_classic() +
       theme(panel.spacing= unit(2,'lines') , axis.text.x=element_text(angle=90)) +
-      geom_hline(yintercept=0, col='gray', lty=2) 
-      #  facet_wrap(facets=vars(group.var) , scales='free') +
-      #  theme(panel.spacing= unit(2,'lines') , axis.text.x=element_text(angle=90)) 
+      geom_hline(yintercept=0, col='gray', lty=2) +
+  
+        facet_wrap(group.var , scales='free') +
+        theme(panel.spacing= unit(2,'lines') , axis.text.x=element_text(angle=90)) 
+
+  return(p1)
+}
+  
+  ts.plot.fun(time.var='date', yvar='J12_18', multiple_group = T, group.var='agec')
 
 ```
 
