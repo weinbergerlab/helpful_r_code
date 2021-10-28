@@ -363,23 +363,40 @@ mod.aic.complex
 ```
 
 ## Generic function for generating variance and confidence intervals of combination of predictors from regression
-compute_CI_comb <- function(parms, Vcov, parmnames){
-
- colnames(Vcov) <- names(parms)
- rownames(Vcov) <- names(parms)
- comb.effect <- sum(parameters[parmnames])
- 
- parm.combos <- combn(parmnames,2,simplify=F)
- 
- cov.piece <- sapply(parm.combos, function(zz){
-     Cov <- 2 * Vcov[zz[1], zz[2] ]
-       })
-  
-  Var <- diag(Vcov)
-  names(Var) <- colnames(Vcov)
-  
-  var.comb.effect <- sum(Var[parmnames]) + sum(cov.piece)
-}
+ #Coefs is the vector of coefficients from the regression, 
+ #VCov is the variance-covariance matrix from the regression
+ #Prmnames is a vector of the parameter names that you want to add together (subset of the names of Coefs)
+ compute_CI_comb <- function(Coefs, Vcov, parmnames){
+   
+   colnames(Vcov) <- names(Coefs)
+   rownames(Vcov) <- names(Coefs)
+   
+   comb.effect <- sum(Coefs[parmnames])
+   
+   Var <- diag(Vcov)
+   names(Var) <- colnames(Vcov)
+   
+   if(length(parmnames)>1){
+   
+     parm.combos <- combn(parmnames,2,simplify=F)
+   
+    cov.piece <- sapply(parm.combos, function(zz){
+      Cov <- 2 * Vcov[zz[1], zz[2] ]
+      })
+   
+     var.comb.effect <- sum(Var[parmnames]) + sum(cov.piece)
+    }else{
+    
+       var.comb.effect <- Var[parmnames]
+   
+      }
+   
+   lcl <- comb.effect - 1.96*sqrt(var.comb.effect)
+   ucl <- comb.effect + 1.96*sqrt(var.comb.effect)
+   
+   parm.combos.ci <- c('mean'=comb.effect, 'lcl'=lcl,'ucl'=ucl)
+  return(parm.combos.ci)
+ } 
 
 ## Making nice summary tables for publications
 Instead of taking the data and putting it into a table in a Word document, you cna make a beautifl html tabl directly in R. Let's take the AIC summary table from above (mod.aic.complex) and turn it into a nice table. You the htmlTable package to do this. Copy and paste the table into Word (make sure you copy the WHOLE table, otherwise weird things will happen); make sure to keep source formatting when yoy paste into Word.
