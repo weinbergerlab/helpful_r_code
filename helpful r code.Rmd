@@ -362,6 +362,24 @@ mod.aic.complex<-sapply(mod.list2, function(x) sapply(x, '[[' , 'aic.mod'))
 mod.aic.complex
 ```
 
+## Generic function for generating variance and confidence intervals of combination of predictors from regression
+compute_CI_comb <- function(parms, Vcov, parmnames){
+
+ colnames(Vcov) <- names(parms)
+ rownames(Vcov) <- names(parms)
+ comb.effect <- sum(parameters[parmnames])
+ 
+ parm.combos <- combn(parmnames,2,simplify=F)
+ 
+ cov.piece <- sapply(parm.combos, function(zz){
+     Cov <- 2 * Vcov[zz[1], zz[2] ]
+       })
+  
+  Var <- diag(Vcov)
+  names(Var) <- colnames(Vcov)
+  
+  var.comb.effect <- sum(Var[parmnames]) + sum(cov.piece)
+}
 
 ## Making nice summary tables for publications
 Instead of taking the data and putting it into a table in a Word document, you cna make a beautifl html tabl directly in R. Let's take the AIC summary table from above (mod.aic.complex) and turn it into a nice table. You the htmlTable package to do this. Copy and paste the table into Word (make sure you copy the WHOLE table, otherwise weird things will happen); make sure to keep source formatting when yoy paste into Word.
