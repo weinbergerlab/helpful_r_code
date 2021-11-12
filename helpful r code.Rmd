@@ -436,5 +436,38 @@ panel.background = element_blank(), axis.line = element_line(colour = "black"))
 Note with smooth_plot: In this example, we exponentiate the results in plot_smooth (transform=exp) to get back to the original scale. With a logistic regression, you will need to supply smooth_plot with a function that calculates an inverse-logit function: ilogit<-function(x){ exp(x)/(1+exp(x))}
 
 
+## INLA: generate posterior predictive samples for Poisson and negative binomial models
+set.seed=(123)
+n = 100
+alpha=3
+beta =2
+x= rnorm(n, 0,0.2)
+
+y= rpois(n, exp(alpha+x*beta) )
+
+r = inla(y ~ 1 + x,
+data = data.frame(y, z),
+control.compute = list(config=TRUE),
+family = "nbinomial")
+r.samples = inla.posterior.sample(101, r)
+
+pred.interval.func <- function(sample.ds, dist=c('nb','poisson')){
+mu1 <- exp(sample.ds$latent[grep('Predictor', row.names(sample.ds$latent))])
+if(dist=='nb'){
+nb.size1 = sample.ds$hyperpar
+pred <- replicate(102, rnbinom(n=length(mu1), mu=mu1, size=nb.size1), simplify = 'array')
+}else{
+pred <- replicate(102, rpois(n=length(mu1), lambda=mu1), simplify = 'array')
+}
+return(pred)
+}
+
+samps <- sapply(r.samples,pred.interval.func,dist='poisson', simplify='array')
+samps.q <- t(apply(samps, 1, quantile, probs=c(0.025,0.5, 0.975)))
+
+par(mfrow=c(1,1))
+
+plot(x, y)
+arrows(x0=x, y0=samps.q[,1],y1=samps.q[,3], length=0)
 
 
