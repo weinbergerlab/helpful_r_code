@@ -437,29 +437,39 @@ Note with smooth_plot: In this example, we exponentiate the results in plot_smoo
 
 
 ## INLA: generate posterior predictive samples for Poisson and negative binomial models
+library(INLA)
 set.seed=(123)
 n = 100
 alpha=3
-beta =2
-x= rnorm(n, 0,0.2)
+beta =1.5
+beta2 =1.2
+beta3 = -2
 
-y= rpois(n, exp(alpha+x*beta) )
+x= (1:n)/n
 
-r = inla(y ~ 1 + x,
-data = data.frame(y, z),
-control.compute = list(config=TRUE),
-family = "nbinomial")
+y= rpois(n, exp(alpha+x*beta + x^2*beta2 +x^3*beta3  +rnorm(n, 0, 0.2))  ) 
+
+x2 <- x
+
+plot(x,y, type='l')
+
+r = inla(y ~ 1 + f(x, model = "rw1", constr = FALSE) +  f(x2, model = "iid", constr = FALSE),
+         data = data.frame(y, x, x2),
+         control.compute = list(config=TRUE),
+         family = "poisson")
+
+plot(r)
 r.samples = inla.posterior.sample(101, r)
 
 pred.interval.func <- function(sample.ds, dist=c('nb','poisson')){
-mu1 <- exp(sample.ds$latent[grep('Predictor', row.names(sample.ds$latent))])
-if(dist=='nb'){
-nb.size1 = sample.ds$hyperpar
-pred <- replicate(102, rnbinom(n=length(mu1), mu=mu1, size=nb.size1), simplify = 'array')
-}else{
-pred <- replicate(102, rpois(n=length(mu1), lambda=mu1), simplify = 'array')
-}
-return(pred)
+  mu1 <- exp(sample.ds$latent[grep('Predictor', row.names(sample.ds$latent))])
+  if(dist=='nb'){
+    nb.size1 = sample.ds$hyperpar
+    pred <- replicate(102, rnbinom(n=length(mu1), mu=mu1, size=nb.size1), simplify = 'array')
+  }else{
+    pred <- replicate(102, rpois(n=length(mu1), lambda=mu1), simplify = 'array')
+  }
+  return(pred)
 }
 
 samps <- sapply(r.samples,pred.interval.func,dist='poisson', simplify='array')
@@ -469,5 +479,3 @@ par(mfrow=c(1,1))
 
 plot(x, y)
 arrows(x0=x, y0=samps.q[,1],y1=samps.q[,3], length=0)
-
-
